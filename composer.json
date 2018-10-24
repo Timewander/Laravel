@@ -1,6 +1,6 @@
 {
-    "name": "laravel/laravel",
-    "description": "The Laravel Framework.",
+    "name": "IEEE",
+    "description": "IEEE Flights",
     "keywords": ["framework", "laravel"],
     "license": "MIT",
     "type": "project",
