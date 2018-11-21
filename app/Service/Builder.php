@@ -5,6 +5,7 @@ namespace App\Service;
 class Builder {
 
     private $airports = null;
+    private $airlines = null;
     private $GPS = null;
 
     public function airports() {
@@ -16,7 +17,7 @@ class Builder {
         if (!file_exists($file)) {
             $content = file_get_contents($resource);
             $map = [
-                "var citiesData" => '<?php $airports',
+                "var citiesData" => '$airports',
                 "in:" => '"in"=>',
                 "out:" => '"out"=>',
                 "{" => "[",
@@ -25,7 +26,7 @@ class Builder {
             foreach ($map as $from => $to) {
                 $content = str_replace($from, $to, $content);
             }
-            file_put_contents($file, $content);
+            file_put_contents($file, "<?php\n$content");
         }
         if (is_null($this->airports)) {
             include $file;
@@ -41,8 +42,8 @@ class Builder {
                 }
                 $this->airports = ["in" => $in, "out" => $out];
             }
+            $this->appendAirportsGPS();
         }
-        $this->appendAirportsGPS();
         return $this->airports;
     }
 
@@ -59,7 +60,7 @@ class Builder {
                 $pieces[$key] = substr($pieces[$key], 0, -3) . "\"" . substr($pieces[$key], -3) . "\"";
             }
             $map = [
-                "var geoCoordMap" => '<?php $airportsGPS',
+                "var geoCoordMap" => '$airportsGPS',
                 "{" => "[",
                 "}" => "]",
             ];
@@ -68,7 +69,7 @@ class Builder {
                 $pieces[$key] = str_replace($from, $to, $pieces[$key]);
             }
             $content = join("=>", $pieces);
-            file_put_contents($file, $content);
+            file_put_contents($file, "<?php\n$content");
         }
         if (is_null($this->GPS)) {
             include $file;
@@ -83,5 +84,63 @@ class Builder {
             $this->airports[$area][$code]["stat"] = $data[4];
             $this->airports[$area][$code]["city"] = $data[5];
         }
+    }
+
+    public function airlines() {
+
+        $path = base_path("resources/assets/js/base");
+        $key = "airlinelist";
+        $resource = "$path/$key.js";
+        $file = "$path/$key.php";
+        if (!file_exists($file)) {
+            $content = file_get_contents($resource);
+            $pieces = explode("}", $content);
+            $map = [
+                "var airlineData" => '$airlines',
+                "in:" => '"in"=>',
+                "out:" => '"out"=>',
+                "inhot:" => '"inhot"=>',
+                "outhot:" => '"outhot"=>',
+                "{" => "[",
+                "}" => "]",
+                "AirIATA:" => '"code"=>',
+                "AirCName:" => '"name"=>',
+                "AirCtry:" => '"stat"=>',
+            ];
+            foreach ($pieces as $key => $piece) {
+                foreach ($map as $from => $to) {
+                    $piece = str_replace($from, $to, $piece);
+                }
+                $pieces[$key] = $piece;
+            }
+            $content = join("]", $pieces);
+            file_put_contents($file, "<?php\n$content");
+        }
+        if (is_null($this->airlines)) {
+            include $file;
+            if (isset($airlines)) {
+                $in = $out = [];
+                foreach ($airlines["in"] as $airline) {
+                    list($code, $name, $name_short) = $airline;
+                    $in[$code] = ["name" => $name, "short" => $name_short];
+                }
+                foreach ($airlines["out"] as $airline) {
+                    list($code, $name, $name_short) = $airline;
+                    $out[$code] = ["name" => $name, "short" => $name_short];
+                }
+                foreach ($airlines["inhot"] as $airline) {
+                    if (isset($in[$airline["code"]])) {
+                        $in[$airline["code"]]["hot"] = 1;
+                    }
+                }
+                foreach ($airlines["outhot"] as $airline) {
+                    if (isset($out[$airline["code"]])) {
+                        $out[$airline["code"]]["hot"] = 1;
+                    }
+                }
+                $this->airlines = ["in" => $in, "out" => $out];
+            }
+        }
+        return $this->airlines;
     }
 }
